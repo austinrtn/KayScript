@@ -1,0 +1,20 @@
+
+ACTION=="add", SUBSYSTEM=="block", ENV{DEVTYPE}=="partition", ENV{ID_BUS}=="usb", RUN+="/usr/local/bin/on-usb-connected.sh"
+
+#/etc/udev/rules.d/
+
+#Action=="add": This tells the rule to trigger the action when a devices is 
+#	added / recognized by the machine
+#
+#SUBSYSTEM=="block": Matches block devices which includes storage devices like disks,
+#	usb drives, partitions, SD cardsand VMEe drives
+#
+#ENV{DEVTYPE}=="partition": Matches only partitions, not whole disk devices
+#
+#ENV{ID_BUs}=="usb": Matches devices whose bus is USB filtering out internal drives
+#
+#RUN+="file_path": Runs this script once the conditions are met 
+#
+#Plain English: When a USB block-device partition is added, run command 
+
+
