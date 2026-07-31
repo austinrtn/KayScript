@@ -1,5 +1,5 @@
 # Useful commands:
-- systemctl --user start foo.service
+- systemctl --user daemon-reload
     Reload user systemd
 
 - systemctl --user start foo.service
