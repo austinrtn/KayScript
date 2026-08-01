@@ -39,7 +39,7 @@ Description=Open terminal when USB storage is connected
 [Service]
 Type=oneshot
 Environment=WAYLAND_DISPLAY=${WAYLAND_DISPLAY}
-Environment=XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR"
+Environment=XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR}"
 Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/${uid}/bus
 ExecStart=/usr/bin/alacritty -e /usr/bin/bash ${script_path}
 EOF
