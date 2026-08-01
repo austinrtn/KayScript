@@ -1,6 +1,7 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 user="$USER"
+work_dir=""
 udev_rule_path="/etc/udev/rules.d/99-usb-drive.rules"
 on_usb_connected_path="/usr/local/bin/on-usb-connected.sh"
 
@@ -10,54 +11,141 @@ config_dir="${home_dir}/.config/systemd/user/"
 service_path="${config_dir}kayscript.service"
 script_dir="${home_dir}/.local/bin/"
 script_path="${script_dir}kayscript.sh"
+script_url="https://raw.githubusercontent.com/austinrtn/KayScript/refs/heads/master/Kayscript.sh"
 
-sudo -v
+main(){
+	local action="${1:---i}"
 
-echo "Adding UDEV Rule"
-sudo tee "$udev_rule_path" > /dev/null <<EOF
-ACTION=="add", SUBSYSTEM=="block", ENV{DEVTYPE}=="partition", ENV{ID_BUS}=="usb", RUN+="${on_usb_connected_path}"
-EOF
+	if [[ "$action" == "--i" ]]; then
+		install_kayscript	
+	elif [[ "$action" == "--r" ]]; then
+		uninstall
+	elif [[ "$action" == "--p" ]]; then
+		print_files
+	else 
+		echo "Invalid argument: $action" >&2
+		exit 2
+	fi
+}
 
-echo "Adding on-usb-connected script..."
-sudo tee "$on_usb_connected_path" > /dev/null <<EOF
-#!/bin/sh
-/usr/bin/systemctl --machine=${user}@.host --user start kayscript.service
-EOF
+cleanup() {		
+	status=$?
+	rm -rf -- "$work_dir" || true
+	trap - EXIT 
+	exit "$status"
+}
 
-sudo chmod +x "$on_usb_connected_path"
+install_kayscript() {
+	work_dir="$(mktemp -d)"
+	trap cleanup EXIT
+	cd "$work_dir"
 
-echo "Adding service..."
+	local udev_rule="udev_rule"
+	local on_usb_connected="on_usb_connected"
+	local service="service"
+	local kayscript="kayscript"
 
-if [[ ! -d "$config_dir" ]]; then
-	mkdir -p "$config_dir"
-fi
+	echo "Downloading KayScript..."
+	if curl --fail --silent --show-error --location --max-time 5 \
+	"$script_url" -o "$kayscript"; then
+		chmod +x "$kayscript"
+		echo "Kayscript downloaded"
+	else
+		echo "Failed to download KayScript!"
+		exit 1
+	fi
 
-cat <<EOF > "$service_path"
-[Unit]
-Description=Open terminal when USB storage is connected
+	echo "Generating files..."
 
-[Service]
-Type=oneshot
-Environment=WAYLAND_DISPLAY=${WAYLAND_DISPLAY}
-Environment=XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR}"
-Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/${uid}/bus
-ExecStart=/usr/bin/alacritty -e /usr/bin/bash ${script_path}
-EOF
+	cat > "$udev_rule" <<-EOF
+		ACTION=="add", SUBSYSTEM=="block", ENV{DEVTYPE}=="partition", ENV{ID_BUS}=="usb", RUN+="${on_usb_connected_path}"
+	EOF
 
-echo "Installing Script..."
+	cat > "$on_usb_connected" <<-EOF
+	#!/bin/sh
+	/usr/bin/systemctl --machine=${user}@.host --user start kayscript.service
+	EOF
+	chmod +x "$on_usb_connected"
 
-if [[ ! -d "$script_dir" ]]; then
-	mkdir -p "$script_dir"
-fi
+	cat <<-EOF > "$service"
+	[Unit]
+	Description=Open terminal when USB storage is connected
 
-cat <<EOF > "$script_path"
-read -rp "Hello World"
-EOF
-chmod +x "$script_path"
+	[Service]
+	Type=oneshot
+	Environment=WAYLAND_DISPLAY=${WAYLAND_DISPLAY}
+	Environment=XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR}"
+	Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/${uid}/bus
+	ExecStart=/usr/bin/alacritty -e /usr/bin/bash ${script_path}
+	EOF
 
-echo "Updating rules and services..."
-sudo udevadm control --reload-rules
-systemctl --user daemon-reload
-systemctl --user status "kayscript.service" | tail -n 2
+	# Move temp files to real paths
+	echo "Installing Files..."
+	mkdir -p "$config_dir" "$script_dir"
 
-echo "Installed!"
+	sudo -v 
+	sudo install -m 644 "$udev_rule" "$udev_rule_path"
+	sudo install -m 755 "$on_usb_connected" "$on_usb_connected_path"
+	install -m 644 "$service" "$service_path"
+	install -m 755 "$kayscript" "$script_path"
+
+	echo "Updating rules and services..."
+	sudo udevadm control --reload-rules
+	systemctl --user daemon-reload
+	systemctl --user status "kayscript.service" | tail -n 2 || true
+
+	echo "Installed!"
+}
+
+uninstall() {
+	sudo -v
+	sudo rm -f "$udev_rule_path"
+	sudo rm -f "$on_usb_connected_path"
+	sudo rm -f "$service_path"
+	sudo rm -f "$script_path"
+
+	sudo udevadm control --reload-rules
+	systemctl --user daemon-reload
+	echo "Uninstalled"
+}
+
+print_files() {	
+	echo "###UDEV RULE###"
+	echo "$udev_rule_path"
+	if [[ -f "$udev_rule_path" ]]; then
+		cat "$udev_rule_path"
+	else 
+		echo "File does not exist"
+	fi
+	echo "-----------------------"
+	read
+
+	echo "###ON_USB_CONNECTED###"
+	echo "$on_usb_connected_path"
+	if [[ -f "$on_usb_connected_path" ]]; then
+		cat "$on_usb_connected_path"
+	else 
+		echo "File does not exist"
+	fi
+	echo "-----------------------"
+	read
+
+	echo "###SERVICE###"
+	echo "$service_path"
+	if [[ -f "$service_path" ]]; then
+		cat "$service_path"
+	else 
+		echo "File does not exist"
+	fi
+	echo "-----------------------"
+	read
+	echo "###KAYSCRIPT###"
+	echo "$script_path"
+	if [[ -f "$script_path" ]]; then
+		cat "$script_path"
+	else 
+		echo "File does not exist"
+	fi
+}
+
+main "$@"
