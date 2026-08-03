@@ -24,6 +24,9 @@ main(){
 		print_files
 	else 
 		echo "Invalid argument: $action" >&2
+		echo "kayscript_install --i: Install"
+		echo "kayscript_install --r: Uninstall"
+		echo "kayscript_install --p: Print relevant files"
 		exit 2
 	fi
 }
@@ -44,6 +47,8 @@ install_kayscript() {
 	local on_usb_connected="on_usb_connected"
 	local service="service"
 	local kayscript="kayscript"
+	local monitor=""
+	local display_manager=""
 
 	echo "Downloading KayScript..."
 	if curl --fail --silent --show-error --location --max-time 5 \
@@ -56,7 +61,6 @@ install_kayscript() {
 	fi
 
 	echo "Generating files..."
-
 	cat > "$udev_rule" <<-EOF
 		ACTION=="add", SUBSYSTEM=="block", ENV{DEVTYPE}=="partition", ENV{ID_BUS}=="usb", RUN+="${on_usb_connected_path}"
 	EOF
@@ -67,13 +71,24 @@ install_kayscript() {
 	EOF
 	chmod +x "$on_usb_connected"
 
+	if [[ -n "$(echo "$WAYLAND_DISPLAY")" ]]; then
+		display_manager="Environment=WAYLAND_DISPLAY=${WAYLAND_DISPLAY}"
+	elif [[ -n "$(echo "$XAUTHORITY")" ]]; then 
+		display_manager="Environment=XAUTHORITY=${XAUTHORITY}"
+		monitor="Environment=Display=:0"
+	else 
+		echo "Cannot find display manager"
+		exit 1
+	fi
+
 	cat <<-EOF > "$service"
 	[Unit]
 	Description=Open terminal when USB storage is connected
 
 	[Service]
 	Type=oneshot
-	Environment=WAYLAND_DISPLAY=${WAYLAND_DISPLAY}
+	${display_manager}
+	${monitor}
 	Environment=XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR}"
 	Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/${uid}/bus
 	ExecStart=/usr/bin/alacritty -e /usr/bin/bash ${script_path}
@@ -137,6 +152,12 @@ print_files() {
 	else 
 		echo "File does not exist"
 	fi
+	echo "-----------------------"
+	read
+	echo "###STATUS / LOGS###"
+	command journalctl -u systemd-udevd --since "5 minutes ago" --no-pager
+	command journalctl -u kayscript.service --since "5 minutes ago" --no-pager
+	command systemctl --user status kayscript.service --no-pager -l
 	echo "-----------------------"
 	read
 	echo "###KAYSCRIPT###"
