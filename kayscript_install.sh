@@ -1,7 +1,6 @@
 #!/bin/bash
 set -euo pipefail
-user="$USER"
-work_dir=""
+user="$USER" work_dir=""
 udev_rule_path="/etc/udev/rules.d/99-usb-drive.rules"
 on_usb_connected_path="/usr/local/bin/on-usb-connected.sh"
 
@@ -46,18 +45,22 @@ install_kayscript() {
 	local udev_rule="udev_rule"
 	local on_usb_connected="on_usb_connected"
 	local service="service"
-	local kayscript="kayscript"
+	local kayscript="KayScript.sh"
 	local monitor=""
 	local display_manager=""
 
-	echo "Downloading KayScript..."
-	if curl --fail --silent --show-error --location --max-time 5 \
-	"$script_url" -o "$kayscript"; then
+	if [[ -f "$kayscript" ]]; then 
 		chmod +x "$kayscript"
-		echo "Kayscript downloaded"
-	else
-		echo "Failed to download KayScript!"
-		exit 1
+	else 
+		echo "Downloading KayScript..."
+		if curl --fail --silent --show-error --location --max-time 5 \
+		"$script_url" -o "$kayscript"; then
+			chmod +x "$kayscript"
+			echo "Kayscript downloaded"
+		else
+			echo "Failed to download KayScript!"
+			exit 1
+		fi
 	fi
 
 	echo "Generating files..."
@@ -154,12 +157,6 @@ print_files() {
 	fi
 	echo "-----------------------"
 	read
-	echo "###STATUS / LOGS###"
-	command journalctl -u systemd-udevd --since "5 minutes ago" --no-pager
-	command journalctl -u kayscript.service --since "5 minutes ago" --no-pager
-	command systemctl --user status kayscript.service --no-pager -l
-	echo "-----------------------"
-	read
 	echo "###KAYSCRIPT###"
 	echo "$script_path"
 	if [[ -f "$script_path" ]]; then
@@ -167,6 +164,12 @@ print_files() {
 	else 
 		echo "File does not exist"
 	fi
+	read
+	echo "###STATUS / LOGS###"
+	command journalctl -u systemd-udevd --since "5 minutes ago" --no-pager
+	command journalctl -u kayscript.service --since "5 minutes ago" --no-pager
+	command systemctl --user status kayscript.service --no-pager -l
+	echo "-----------------------"
 }
 
 main "$@"

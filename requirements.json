@@ -1,0 +1,4 @@
+{
+	"system": [],
+	"pip": ["textual", "rich"]
+}
