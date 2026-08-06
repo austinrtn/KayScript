@@ -10,7 +10,7 @@ config_dir="${home_dir}/.config/systemd/user/"
 service_path="${config_dir}kayscript.service"
 script_dir="${home_dir}/.local/bin/"
 script_path="${script_dir}kayscript.sh"
-script_url="https://raw.githubusercontent.com/austinrtn/KayScript/refs/heads/master/Kayscript.sh"
+script_url="https://raw.githubusercontent.com/austinrtn/KayScript/refs/heads/master/KayScript.sh"
 
 main(){
 	local action="${1:---i}"
