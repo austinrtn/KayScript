@@ -10,7 +10,9 @@ config_dir="${home_dir}/.config/systemd/user/"
 service_path="${config_dir}kayscript.service"
 script_dir="${home_dir}/.local/bin/"
 script_path="${script_dir}kayscript.sh"
+py_app_path="${script_dir}app.py"
 script_url="https://raw.githubusercontent.com/austinrtn/KayScript/refs/heads/master/KayScript.sh"
+py_app_url="https://raw.githubusercontent.com/austinrtn/KayScript/refs/heads/master/app.py"
 
 main(){
 	local action="${1:---i}"
@@ -46,21 +48,25 @@ install_kayscript() {
 	local on_usb_connected="on_usb_connected"
 	local service="service"
 	local kayscript="KayScript.sh"
+	local py_app="app.py"
 	local monitor=""
 	local display_manager=""
 
-	if [[ -f "$kayscript" ]]; then 
+	echo "Downloading KayScript..."
+	if curl --fail --silent --show-error --location --max-time 5 \
+	"$script_url" -o "$kayscript"; then
 		chmod +x "$kayscript"
+		echo "Kayscript downloaded"
+	else
+		echo "Failed to download KayScript!"
+		exit 1
+	fi
+
+	if curl --fail --silent --show-error --location --max-time 5 \
+		"$py_app_url" -o "$py_app"; then 
+		echo "$py_app downloaded"
 	else 
-		echo "Downloading KayScript..."
-		if curl --fail --silent --show-error --location --max-time 5 \
-		"$script_url" -o "$kayscript"; then
-			chmod +x "$kayscript"
-			echo "Kayscript downloaded"
-		else
-			echo "Failed to download KayScript!"
-			exit 1
-		fi
+		echo "Failed to download $py_app"
 	fi
 
 	echo "Generating files..."
@@ -106,6 +112,7 @@ install_kayscript() {
 	sudo install -m 755 "$on_usb_connected" "$on_usb_connected_path"
 	install -m 644 "$service" "$service_path"
 	install -m 755 "$kayscript" "$script_path"
+	install -m 755 "$py_app" "$py_app_path"
 
 	echo "Updating rules and services..."
 	sudo udevadm control --reload-rules
@@ -121,6 +128,7 @@ uninstall() {
 	sudo rm -f "$on_usb_connected_path"
 	sudo rm -f "$service_path"
 	sudo rm -f "$script_path"
+	sudo rm -f ""
 
 	sudo udevadm control --reload-rules
 	systemctl --user daemon-reload
@@ -161,6 +169,14 @@ print_files() {
 	echo "$script_path"
 	if [[ -f "$script_path" ]]; then
 		cat "$script_path"
+	else 
+		echo "File does not exist"
+	fi
+	read
+	echo "###PYTHON APP###"
+	echo "$py_app_path"
+	if [[ -f "$py_app_path" ]]; then
+		cat "$py_app_path"
 	else 
 		echo "File does not exist"
 	fi
