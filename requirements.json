@@ -1,4 +1,10 @@
 {
 	"system": [],
-	"pip": ["textual", "rich"]
+	"pip": [
+		"textual", 
+		"rich",
+		"google-api-python-client",
+		"google-auth-httplib2",
+		"google-auth-oauthlib"
+	]
 }

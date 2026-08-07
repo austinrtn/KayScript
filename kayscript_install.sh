@@ -60,17 +60,19 @@ install_kayscript() {
 	download "$py_app_url" "$py_app" || exit 1
 	download "$req_json_url" "$req_json" || exit 1
 
+	echo "Downloads Complete!"
+
 	chmod +x "$on_usb_connected" "$kayscript"
 
 	# udev_rule: Replace placeholders with variables 
 	sed \
-		-e "s|__USB_CONNECTED_PATH__|${on_usb_connected_path}|g"
-		"$udev_rule" > "${udev_rule}.tmp"
+		-e "s|__USB_CONNECTED_PATH__|${on_usb_connected_path}|g" \
+		"$udev_rule" > "${udev_rule}.tmp" 
 	mv "${udev_rule}.tmp" "$udev_rule"
 
 	# on_usb_connected: Replace placeholders with variables 
 	sed \
-		-e "s|__USER__|${USER}|g"
+		-e "s|__USER__|${USER}|g" \
 		"$on_usb_connected" > "${on_usb_connected}.tmp"
 	mv "${on_usb_connected}.tmp" "$on_usb_connected"
 

@@ -77,4 +77,5 @@ if [[ ! -f "$app" ]]; then
 fi
 
 #Open program  
+clear
 python "$app"
