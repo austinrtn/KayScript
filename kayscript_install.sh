@@ -45,7 +45,7 @@ install_kayscript() {
 	cd "$work_dir"
 
 	local udev_rule="udev_rule"
-	local on_usb_connected="on_usb_connected"
+	local on_usb_connected="on-usb-connected"
 	local service="kayscript.service"
 	local kayscript="KayScript.sh"
 	local py_app="app.py"
@@ -61,6 +61,12 @@ install_kayscript() {
 	download "$req_json_url" "$req_json" || exit 1
 
 	chmod +x "$on_usb_connected" "$kayscript"
+
+	# udev_rule: Replace placeholders with variables 
+	sed \
+		-e "s|__USB_CONNECTED_PATH__|${on_usb_connected_path}|g"
+		"$udev_rule" > "${udev_rule}.tmp"
+	mv "${udev_rule}.tmp" "$udev_rule"
 
 	# on_usb_connected: Replace placeholders with variables 
 	sed \
@@ -85,7 +91,7 @@ install_kayscript() {
 	$monitor
 	EOF
 
-	# Replace placeholders with variables 
+	# kayscript.service: Replace placeholders with variables 
 	sed \
 		-e "s|__SCRIPT_PATH__|${script_path}|g" \
 		-e "s|__XDG_RUNTIME_DIR__|${runtime_dir}|g" \
