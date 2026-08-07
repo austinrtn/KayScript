@@ -8,9 +8,9 @@ uid="$(id -u)"
 home_dir="$HOME"
 config_dir="${home_dir}/.config/systemd/user/"
 service_path="${config_dir}kayscript.service"
-script_dir="${home_dir}/.local/bin/"
-script_path="${script_dir}kayscript.sh"
-py_app_path="${script_dir}app.py"
+project_dir="${home_dir}/.local/share/"
+script_link_path="${home_dir}/.local/KayScript"
+py_app_path="${project_dir}app.py"
 script_url="https://raw.githubusercontent.com/austinrtn/KayScript/refs/heads/master/KayScript.sh"
 py_app_url="https://raw.githubusercontent.com/austinrtn/KayScript/refs/heads/master/app.py"
 
@@ -100,18 +100,18 @@ install_kayscript() {
 	${monitor}
 	Environment=XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR}"
 	Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/${uid}/bus
-	ExecStart=/usr/bin/alacritty -e /usr/bin/bash ${script_path}
+	ExecStart=/usr/bin/alacritty -e /usr/bin/bash ${script_link_path}
 	EOF
 
 	# Move temp files to real paths
 	echo "Installing Files..."
-	mkdir -p "$config_dir" "$script_dir"
+	mkdir -p "$config_dir" "$project_dir"
 
 	sudo -v 
 	sudo install -m 644 "$udev_rule" "$udev_rule_path"
 	sudo install -m 755 "$on_usb_connected" "$on_usb_connected_path"
 	install -m 644 "$service" "$service_path"
-	install -m 755 "$kayscript" "$script_path"
+	install -m 755 "$kayscript" "$script_link_path"
 	install -m 755 "$py_app" "$py_app_path"
 
 	echo "Updating rules and services..."
@@ -127,8 +127,8 @@ uninstall() {
 	sudo rm -f "$udev_rule_path"
 	sudo rm -f "$on_usb_connected_path"
 	sudo rm -f "$service_path"
-	sudo rm -f "$script_path"
-	sudo rm -f ""
+	sudo rm -f "$script_link_path"
+	sudo rm -f "$py_app_path"
 
 	sudo udevadm control --reload-rules
 	systemctl --user daemon-reload
@@ -166,9 +166,9 @@ print_files() {
 	echo "-----------------------"
 	read
 	echo "###KAYSCRIPT###"
-	echo "$script_path"
-	if [[ -f "$script_path" ]]; then
-		cat "$script_path"
+	echo "$script_link_path"
+	if [[ -f "$script_link_path" ]]; then
+		cat "$script_link_path"
 	else 
 		echo "File does not exist"
 	fi

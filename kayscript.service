@@ -7,6 +7,6 @@
   Environment=XAUTHORITY=/home/dogmaticpolack/.Xauthority
   Environment=XDG_RUNTIME_DIR=/run/user/1000
   Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
-  ExecStart=/usr/bin/alacritty -e /usr/bin/bash /home/dogmaticpolack/Documents/KayScript/test.sh
+  ExecStart=/usr/bin/alacritty -e /usr/bin/bash /home/dogmaticpolack/Documents/KayScript/KayScript.sh
 
 
