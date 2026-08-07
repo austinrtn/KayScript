@@ -183,8 +183,10 @@ download() {
 	if curl --fail --silent --show-error --location --max-time 5 \
 		"$url" -o "$file_name"; then
 		echo "$file_name downloaded"
+		return 0
 	else
 		echo "Failed to download $file_name"
+		return 1
 	fi
 }
 
