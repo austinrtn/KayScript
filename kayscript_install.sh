@@ -53,14 +53,20 @@ install_kayscript() {
 	local monitor=""
 	local display_manager=""
 
+	download "$service_url" "$service" || exit 1
 	download "$udev_url" "$udev_rule" || exit 1
 	download "$on_usb_connected_url" "$on_usb_connected" || exit 1
-	download "$service_url" "$service"
 	download "$script_url" "$kayscript" || exit 1
 	download "$py_app_url" "$py_app" || exit 1
 	download "$req_json_url" "$req_json" || exit 1
 
 	chmod +x "$on_usb_connected" "$kayscript"
+
+	# on_usb_connected: Replace placeholders with variables 
+	sed \
+		-e "s|__USER__|${USER}|g"
+		"$on_usb_connected" > "${on_usb_connected}.tmp"
+	mv "${on_usb_connected}.tmp" "$on_usb_connected"
 
 	# Get Envirnment variables and append to service file 
 	local runtime_dir="/run/user/$uid"
@@ -79,10 +85,11 @@ install_kayscript() {
 	$monitor
 	EOF
 
+	# Replace placeholders with variables 
 	sed \
-		-e "s|@SCRIPT_PATH@|${script_path}|g" \
-		-e "s|@XDG@|${runtime_dir}|g" \
-		-e "s|@UID@|${uid}|g" \
+		-e "s|__SCRIPT_PATH__|${script_path}|g" \
+		-e "s|__XDG_RUNTIME_DIR__|${runtime_dir}|g" \
+		-e "s|__UID__|${uid}|g" \
 		"$service" > "${service}.tmp"
 	mv "${service}.tmp" "$service"
 
