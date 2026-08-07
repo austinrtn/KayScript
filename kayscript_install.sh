@@ -5,14 +5,17 @@ udev_rule_path="/etc/udev/rules.d/99-usb-drive.rules"
 on_usb_connected_path="/usr/local/bin/on-usb-connected.sh"
 
 uid="$(id -u)"
-home_dir="$HOME"
-config_dir="${home_dir}/.config/systemd/user/"
-service_path="${config_dir}kayscript.service"
-project_dir="${home_dir}/.local/share/"
-script_link_path="${home_dir}/.local/KayScript"
-py_app_path="${project_dir}app.py"
+project_dir="${HOME}/.local/share/KayScript/" # Where project files are installed 
+config_dir="${HOME}/.config/systemd/user/"  # Where service is installed 
+
+service_path="${config_dir}kayscript.service" # Path to service 
+script_path="${project_dir}KayScript.sh"
+py_app_path="${project_dir}app.py" # Python App path
+req_json_path="${project_dir}requirements.json"
+
 script_url="https://raw.githubusercontent.com/austinrtn/KayScript/refs/heads/master/KayScript.sh"
 py_app_url="https://raw.githubusercontent.com/austinrtn/KayScript/refs/heads/master/app.py"
+req_json_url="https://raw.githubusercontent.com/austinrtn/KayScript/refs/heads/master/requirements.json"
 
 main(){
 	local action="${1:---i}"
@@ -39,6 +42,17 @@ cleanup() {
 	exit "$status"
 }
 
+download() {
+	echo "Downloading ${2}..."
+	if curl --fail --silent --show-error --location --max-time 5 \
+		"$1" -o "$2"; then
+		echo "$2 Downloaded"
+	else 
+		echo "Failed to download $2"
+		exit 1
+	fi
+}
+
 install_kayscript() {
 	work_dir="$(mktemp -d)"
 	trap cleanup EXIT
@@ -52,22 +66,9 @@ install_kayscript() {
 	local monitor=""
 	local display_manager=""
 
-	echo "Downloading KayScript..."
-	if curl --fail --silent --show-error --location --max-time 5 \
-	"$script_url" -o "$kayscript"; then
-		chmod +x "$kayscript"
-		echo "Kayscript downloaded"
-	else
-		echo "Failed to download KayScript!"
-		exit 1
-	fi
-
-	if curl --fail --silent --show-error --location --max-time 5 \
-		"$py_app_url" -o "$py_app"; then 
-		echo "$py_app downloaded"
-	else 
-		echo "Failed to download $py_app"
-	fi
+	download "$script_url" "$kayscript"
+	download "$py_app_url" "$py_app"
+	download "$req_json_url" "requirements.json"
 
 	echo "Generating files..."
 	cat > "$udev_rule" <<-EOF
@@ -100,7 +101,7 @@ install_kayscript() {
 	${monitor}
 	Environment=XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR}"
 	Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/${uid}/bus
-	ExecStart=/usr/bin/alacritty -e /usr/bin/bash ${script_link_path}
+	ExecStart=/usr/bin/alacritty -e /usr/bin/bash ${script_path}
 	EOF
 
 	# Move temp files to real paths
@@ -111,13 +112,21 @@ install_kayscript() {
 	sudo install -m 644 "$udev_rule" "$udev_rule_path"
 	sudo install -m 755 "$on_usb_connected" "$on_usb_connected_path"
 	install -m 644 "$service" "$service_path"
-	install -m 755 "$kayscript" "$script_link_path"
+	install -m 755 "$kayscript" "$script_path"
 	install -m 755 "$py_app" "$py_app_path"
+
+	ln -sfn "$udev_rule_path" "$project_dir"
+	ln -sfn "$on_usb_connected_path" "$project_dir"
+	ln -sfn "$service_path" "$project_dir"
 
 	echo "Updating rules and services..."
 	sudo udevadm control --reload-rules
 	systemctl --user daemon-reload
 	systemctl --user status "kayscript.service" | tail -n 2 || true
+
+	echo "Installing Python Virtual Envirnment..."
+	cd "$project_dir"
+	python -m venv .venv
 
 	echo "Installed!"
 }
@@ -127,8 +136,8 @@ uninstall() {
 	sudo rm -f "$udev_rule_path"
 	sudo rm -f "$on_usb_connected_path"
 	sudo rm -f "$service_path"
-	sudo rm -f "$script_link_path"
 	sudo rm -f "$py_app_path"
+	sudo rm -rf "$project_dir"
 
 	sudo udevadm control --reload-rules
 	systemctl --user daemon-reload
