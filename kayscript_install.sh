@@ -46,7 +46,7 @@ install_kayscript() {
 
 	local udev_rule="udev_rule"
 	local on_usb_connected="on_usb_connected"
-	local service="service"
+	local service="kayscript.service"
 	local kayscript="KayScript.sh"
 	local py_app="app.py"
 	local req_json="requirements.json"
@@ -55,6 +55,7 @@ install_kayscript() {
 
 	download "$udev_url" "$udev_rule" || exit 1
 	download "$on_usb_connected_url" "$on_usb_connected" || exit 1
+	download "$service_url" "$service"
 	download "$script_url" "$kayscript" || exit 1
 	download "$py_app_url" "$py_app" || exit 1
 	download "$req_json_url" "$req_json" || exit 1
@@ -62,6 +63,7 @@ install_kayscript() {
 	chmod +x "$on_usb_connected" "$kayscript"
 
 	# Get Envirnment variables and append to service file 
+	local runtime_dir="/run/user/$uid"
 	if [[ -n "$(echo "$WAYLAND_DISPLAY")" ]]; then
 		display_manager="Environment=WAYLAND_DISPLAY=${WAYLAND_DISPLAY}"
 	elif [[ -n "$(echo "$XAUTHORITY")" ]]; then 
@@ -72,8 +74,17 @@ install_kayscript() {
 		exit 1
 	fi
 
-	echo "$display_manager" >> "$service"
-	echo "$monitor" >> "$service"
+	cat >> "$service" <<-EOF
+	$display_manager
+	$monitor
+	EOF
+
+	sed \
+		-e "s|@SCRIPT_PATH@|${script_path}|g" \
+		-e "s|@XDG@|${runtime_dir}|g" \
+		-e "s|@UID@|${uid}|g" \
+		"$service" > "${service}.tmp"
+	mv "${service}.tmp" "$service"
 
 	# Move temp files to real paths
 	echo "Installing Files..."
@@ -147,9 +158,9 @@ print_files() {
 	echo "-----------------------"
 	read
 	echo "###KAYSCRIPT###"
-	echo "$script_link_path"
-	if [[ -f "$script_link_path" ]]; then
-		cat "$script_link_path"
+	echo "$script_path"
+	if [[ -f "$script_path" ]]; then
+		cat "$script_path"
 	else 
 		echo "File does not exist"
 	fi
