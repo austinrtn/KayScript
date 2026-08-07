@@ -1,12 +1,9 @@
-  [Unit]
-  Description=Open terminal when USB storage is connected
+[Unit]
+Description=Open terminal when USB storage is connected
 
-  [Service]
-  Type=oneshot
-  Environment=DISPLAY=:0
-  Environment=XAUTHORITY=/home/dogmaticpolack/.Xauthority
-  Environment=XDG_RUNTIME_DIR=/run/user/1000
-  Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
-  ExecStart=/usr/bin/alacritty -e /usr/bin/bash /home/dogmaticpolack/Documents/KayScript/KayScript.sh
-
+[Service]
+Type=oneshot
+Environment=XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR}"
+Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/${uid}/bus
+ExecStart=/usr/bin/alacritty -e /usr/bin/bash ${script_path}
 
