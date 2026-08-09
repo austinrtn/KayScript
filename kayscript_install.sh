@@ -122,6 +122,10 @@ install_kayscript() {
 	sudo udevadm control --reload-rules
 	systemctl --user daemon-reload
 	systemctl --user status "kayscript.service" | tail -n 2 || true
+	
+	rule="$user ALL=(root) NOPASSWD: $script_path"	
+	rule_file=$(mktemp)
+	printf "%s\n" "$rule" > "$rule_file"
 
 	echo "Installing Python Virtual Envirnment..."
 	cd "$project_dir"
