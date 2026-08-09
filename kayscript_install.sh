@@ -104,6 +104,7 @@ install_kayscript() {
 	# Move temp files to real paths
 	echo "Installing Files..."
 	mkdir -p "$config_dir" "$project_dir"
+	sudo mkdir /mnt/
 
 	sudo -v 
 	sudo install -m 644 "$udev_rule" "$udev_rule_path"

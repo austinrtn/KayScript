@@ -8,6 +8,7 @@ cd "$script_dir"
 # File names
 requirements="requirements.json"
 app="app.py"
+devices="devices"
 
 # Parse json arrays into bash readable data
 mapfile -t system_reqs < <(jq -r '.system[]' "$requirements") # Machine package requirements 
@@ -74,6 +75,9 @@ fi
 
 if [[ ! -f "$app" ]]; then 
 	touch "$app"
+fi
+if [[ ! -f "$devices" ]]; then 
+	touch "$devices"
 fi
 
 #Open program  
