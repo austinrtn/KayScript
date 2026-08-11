@@ -5,21 +5,30 @@ user="$USER" work_dir=""
 uid="$(id -u)"
 project_dir="${HOME}/.local/share/KayScript/" # Where project files are installed 
 config_dir="${HOME}/.config/systemd/user/"  # Where service is installed 
-
-udev_rule_path="/etc/udev/rules.d/99-usb-drive.rules"
-on_usb_connected_path="/usr/local/bin/on-usb-connected.sh"
-service_path="${config_dir}kayscript.service" # Path to service 
-script_path="${project_dir}KayScript.sh"
-py_app_path="${project_dir}app.py" # Python App path
-req_json_path="${project_dir}requirements.json" # Bash / Pip Requirements 
-
 gh_url="https://raw.githubusercontent.com/austinrtn/KayScript/refs/heads/master/"
+
+# UDEV RULE
+udev_rule_path="/etc/udev/rules.d/99-usb-drive.rules"
 udev_url="${gh_url}99-usb-connected.sh"
-on_usb_connected_url="${gh_url}on_usb_connected.sh"
+
+# ROOT SERVICE
+root_service_apth="/etc/systemd/system/kayscript-usb.service"
+root_service_url=""
+
+# KAYSCRIPT SERVICE 
+service_path="/etc/systemd/system/kayscript.service" # Path to service 
 service_url="${gh_url}kayscript.service"
+
+script_path="${project_dir}KayScript.sh"
 script_url="${gh_url}KayScript.sh"
+
+py_app_path="${project_dir}app.py" # Python App path
 py_app_url="${gh_url}app.py"
+
+req_json_path="${project_dir}requirements.json" # Bash / Pip Requirements 
 req_json_url="${gh_url}requirements.json"
+
+### NEED TO INSTALL A WAY TO PUSH TO GH 
 
 main(){
 	local action="${1:---i}"
@@ -44,9 +53,10 @@ install_kayscript() {
 	trap cleanup EXIT
 	cd "$work_dir"
 
+	local sudoers_path="/etc/sudoers.d/kayscript"
 	local udev_rule="udev_rule"
 	local on_usb_connected="on-usb-connected"
-	local service="kayscript.service"
+	local root_service="kayscript.service"
 	local kayscript="KayScript.sh"
 	local py_app="app.py"
 	local req_json="requirements.json"
@@ -55,7 +65,6 @@ install_kayscript() {
 
 	download "$service_url" "$service" || exit 1
 	download "$udev_url" "$udev_rule" || exit 1
-	download "$on_usb_connected_url" "$on_usb_connected" || exit 1
 	download "$script_url" "$kayscript" || exit 1
 	download "$py_app_url" "$py_app" || exit 1
 	download "$req_json_url" "$req_json" || exit 1
@@ -66,54 +75,36 @@ install_kayscript() {
 
 	# udev_rule: Replace placeholders with variables 
 	sed \
-		-e "s|__USB_CONNECTED_PATH__|${on_usb_connected_path}|g" \
+		-e "s|__ROOT_SERVICE__|${service}|g" \
 		"$udev_rule" > "${udev_rule}.tmp" 
 	mv "${udev_rule}.tmp" "$udev_rule"
-
-	# on_usb_connected: Replace placeholders with variables 
-	sed \
-		-e "s|__USER__|${USER}|g" \
-		"$on_usb_connected" > "${on_usb_connected}.tmp"
-	mv "${on_usb_connected}.tmp" "$on_usb_connected"
-
-	# Get Envirnment variables and append to service file 
-	local runtime_dir="/run/user/$uid"
-	if [[ -n "$(echo "$WAYLAND_DISPLAY")" ]]; then
-		display_manager="Environment=WAYLAND_DISPLAY=${WAYLAND_DISPLAY}"
-	elif [[ -n "$(echo "$XAUTHORITY")" ]]; then 
-		display_manager="Environment=XAUTHORITY=${XAUTHORITY}"
-		monitor="Environment=Display=:0"
-	else 
-		echo "Cannot find display manager"
-		exit 1
-	fi
-
-	cat >> "$service" <<-EOF
-	$display_manager
-	$monitor
-	EOF
 
 	# kayscript.service: Replace placeholders with variables 
 	sed \
 		-e "s|__SCRIPT_PATH__|${script_path}|g" \
-		-e "s|__XDG_RUNTIME_DIR__|${runtime_dir}|g" \
-		-e "s|__UID__|${uid}|g" \
 		"$service" > "${service}.tmp"
 	mv "${service}.tmp" "$service"
 
 	# Move temp files to real paths
 	echo "Installing Files..."
 	mkdir -p "$config_dir" "$project_dir"
-	sudo mkdir /mnt/
+	sudo mkdir -p /mnt/
 
 	sudo -v 
 	sudo install -m 644 "$udev_rule" "$udev_rule_path"
+	sudo install -o root -g root -m 644 "$service" "$service_path"
 	sudo install -m 755 "$on_usb_connected" "$on_usb_connected_path"
-	install -m 644 "$service" "$service_path"
-	install -m 755 "$kayscript" "$script_path"
 	install -m 755 "$py_app" "$py_app_path"
 	install -m 755 "$req_json" "$req_json_path"
+	sudo install -o root -g root -m 0755 "$kayscript" "$script_path"
 
+	rule="$user ALL=(root) NOPASSWD: $script_path"	
+	tmp_rule="$(mktemp)"
+	printf "%s\n" "$rule" > "$tmp_rule"
+	command visudo -cf "$tmp_rule"
+
+	sudo install -o root -g root -m 0440 "$tmp_rule" "$sudoers_path"
+	
 	ln -sfn "$udev_rule_path" "$project_dir"
 	ln -sfn "$on_usb_connected_path" "$project_dir"
 	ln -sfn "$service_path" "$project_dir"
@@ -123,10 +114,6 @@ install_kayscript() {
 	systemctl --user daemon-reload
 	systemctl --user status "kayscript.service" | tail -n 2 || true
 	
-	rule="$user ALL=(root) NOPASSWD: $script_path"	
-	rule_file=$(mktemp)
-	printf "%s\n" "$rule" > "$rule_file"
-
 	echo "Installing Python Virtual Envirnment..."
 	cd "$project_dir"
 	python -m venv .venv
@@ -211,7 +198,7 @@ download() {
 	url="$1"
 	file_name="$2"
 
-	if curl --fail --silent --show-error --location --max-time 5 \
+	if curl --fail --silent --show-error --location --max-time 15 \
 		"$url" -o "$file_name"; then
 		echo "$file_name downloaded"
 		return 0

@@ -1,8 +1,6 @@
 [Unit]
-Description=Open terminal when USB storage is connected
+Description=KayScript priveleged USB action 
 
 [Service]
 Type=oneshot
-Environment=XDG_RUNTIME_DIR="__XDG_RUNTIME_DIR__"
-Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/__UID__/bus
-ExecStart=/usr/bin/alacritty -e /usr/bin/bash __SCRIPT_PATH__
+ExecStart=/usr/bin/systemctl --machine=__USER__@.host --user start kayscript.service
