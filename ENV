@@ -1,0 +1,21 @@
+#!/bin/bash
+
+uid="$(id -u)"
+project_dir="${HOME}/.local/share/KayScript/" # Where project files are installed 
+config_dir="${HOME}/.config/systemd/user/"  # Where service is installed 
+
+udev_rule_path="/etc/udev/rules.d/99-usb-drive.rules"
+on_usb_connected_path="/usr/local/bin/on-usb-connected.sh"
+service_path="${config_dir}kayscript.service" # Path to service 
+script_path="${project_dir}KayScript.sh"
+py_app_path="${project_dir}app.py" # Python App path
+req_json_path="${project_dir}requirements.json" # Bash / Pip Requirements 
+
+gh_url="https://raw.githubusercontent.com/austinrtn/KayScript/refs/heads/master/"
+udev_url="${gh_url}99-usb-connected.sh"
+on_usb_connected_url="${gh_url}on_usb_connected.sh"
+service_url="${gh_url}kayscript.service"
+script_url="${gh_url}KayScript.sh"
+py_app_url="${gh_url}app.py"
+req_json_url="${gh_url}requirements.json"
+
