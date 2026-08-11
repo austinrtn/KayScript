@@ -12,7 +12,6 @@ class File:
     dest: Path
     mode: int
     root_owned: bool 
-    is_exec: bool = False
     tmp_path: Path = Path("/tmp")
 
     def download(self) -> bool:
@@ -49,9 +48,24 @@ class File:
         return False
 
     def replace_text(self, old: str, new: str) -> None: 
-        self.tmp_path.write_text(
-            self.tmp_path.read_text().replace(old, new)
-        )
+        self.tmp_path.write_text(self.tmp_path.read_text().replace(old, new))
+
+    def install(self) -> None: 
+        if self.root_owned:
+            subprocess.run([
+                "sudo", 
+                "install", 
+                "-o", "root", 
+                "-g", "root", 
+                "-m", f"{self.mode:o}",
+                f"{self.tmp_path}", f"{self.dest}",
+            ], check=False)
+        else:
+            subprocess.run([
+                "install", 
+                "-m", f"{self.mode:o}",
+                f"{self.tmp_path}", f"{self.dest}",
+            ], check=False)
 
 config_dir = Path.home() / ".config/systemd/user/"
 project_dir = Path.home() / ".local/share/KayScript/"
@@ -87,7 +101,6 @@ launcher = File(
     dest=project_dir / "KayScript.sh",
     mode=0o755,
     root_owned=False,
-    is_exec=True,
 )
 
 app = File(
@@ -98,7 +111,15 @@ app = File(
     root_owned=False,
 )
 
-files = [udev_rule, root_service, user_service, launcher, app]
+reqs = File(
+    name="requirements.json",
+    url=f"{gh_url}requirements.json",
+    dest=project_dir / "requirements.json",
+    mode=0o644,
+    root_owned=False,
+)
+
+files = [udev_rule, root_service, user_service, launcher, app, reqs]
 
 def main(): 
     arg = sys.argv[1]
@@ -129,8 +150,9 @@ def install(work_dir: TemporaryDirectory) -> int:
     subprocess.run(["mkdir", "-p", config_dir, project_dir], check=False)
     subprocess.run(["sudo", "mkdir", "-p", "/mnt/"], check=False)
 
-    
-    
+    for file in files: 
+        file.install()
+        
     return 0
 
 if __name__ == "__main__":
