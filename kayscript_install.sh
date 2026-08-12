@@ -49,13 +49,19 @@ main(){
 }
 
 install_kayscript() {
+    read -p "Commit Changes?" commit
+    if [ ! -z "$commit" ]; then 
+        git add .
+        git commit -m "$commit"
+        git push
+    fi
+    
 	work_dir="$(mktemp -d)"
 	trap cleanup EXIT
 	cd "$work_dir"
 
 	local sudoers_path="/etc/sudoers.d/kayscript"
 	local udev_rule="udev_rule"
-	local on_usb_connected="on-usb-connected"
 	local root_service="kayscript.service"
 	local kayscript="KayScript.sh"
 	local py_app="app.py"
@@ -70,8 +76,6 @@ install_kayscript() {
 	download "$req_json_url" "$req_json" || exit 1
 
 	echo "Downloads Complete!"
-
-	chmod +x "$on_usb_connected" "$kayscript"
 
 	# udev_rule: Replace placeholders with variables 
 	sed \
@@ -93,7 +97,6 @@ install_kayscript() {
 	sudo -v 
 	sudo install -m 644 "$udev_rule" "$udev_rule_path"
 	sudo install -o root -g root -m 644 "$service" "$service_path"
-	sudo install -m 755 "$on_usb_connected" "$on_usb_connected_path"
 	install -m 755 "$py_app" "$py_app_path"
 	install -m 755 "$req_json" "$req_json_path"
 	sudo install -o root -g root -m 0755 "$kayscript" "$script_path"
@@ -106,7 +109,6 @@ install_kayscript() {
 	sudo install -o root -g root -m 0440 "$tmp_rule" "$sudoers_path"
 	
 	ln -sfn "$udev_rule_path" "$project_dir"
-	ln -sfn "$on_usb_connected_path" "$project_dir"
 	ln -sfn "$service_path" "$project_dir"
 
 	echo "Updating rules and services..."
@@ -124,7 +126,6 @@ install_kayscript() {
 uninstall() {
 	sudo -v
 	sudo rm -f "$udev_rule_path"
-	sudo rm -f "$on_usb_connected_path"
 	sudo rm -f "$service_path"
 	sudo rm -f "$py_app_path"
 	sudo rm -rf "$project_dir"
@@ -139,16 +140,6 @@ print_files() {
 	echo "$udev_rule_path"
 	if [[ -f "$udev_rule_path" ]]; then
 		cat "$udev_rule_path"
-	else 
-		echo "File does not exist"
-	fi
-	echo "-----------------------"
-	read
-
-	echo "###ON_USB_CONNECTED###"
-	echo "$on_usb_connected_path"
-	if [[ -f "$on_usb_connected_path" ]]; then
-		cat "$on_usb_connected_path"
 	else 
 		echo "File does not exist"
 	fi

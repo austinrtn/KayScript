@@ -1,6 +1,6 @@
 [Unit]
-Description=KayScript priveleged USB action 
+Description=KayScript interface
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/systemctl --machine=__USER__@.host --user start kayscript.service
+ExecStart=/usr/bin/alacritty -e /usr/bin/sudo /var/lib/kayscript/KayScript.sh

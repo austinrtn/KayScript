@@ -68,7 +68,7 @@ class File:
             ], check=False)
 
 config_dir = Path.home() / ".config/systemd/user/"
-project_dir = Path.home() / ".local/share/KayScript/"
+project_dir = Path.home() / "/var/lib/kayscript"
 gh_url="https://raw.githubusercontent.com/austinrtn/KayScript/refs/heads/master/"
 
 udev_rule = File(
@@ -100,7 +100,7 @@ launcher = File(
     url=f"{gh_url}KayScript.sh",
     dest=project_dir / "KayScript.sh",
     mode=0o755,
-    root_owned=False,
+    root_owned=True,
 )
 
 app = File(
@@ -108,7 +108,7 @@ app = File(
     url=f"{gh_url}app.py",
     dest=project_dir / "app.py",
     mode=0o644,
-    root_owned=False,
+    root_owned=True,
 )
 
 reqs = File(
@@ -116,7 +116,7 @@ reqs = File(
     url=f"{gh_url}requirements.json",
     dest=project_dir / "requirements.json",
     mode=0o644,
-    root_owned=False,
+    root_owned=True,
 )
 
 files = [udev_rule, root_service, user_service, launcher, app, reqs]
@@ -126,14 +126,15 @@ def main():
     if arg == "--i":
         work_dir = TemporaryDirectory()
         try: 
-            install(work_dir)
+            install_script(work_dir)
         finally:
             work_dir.cleanup()
 
-def install(work_dir: TemporaryDirectory) -> int:
-    print("Beginning Installation!")
+def install_script(work_dir: TemporaryDirectory) -> int:
+    print("> Beginning Installation!")
     os.chdir(work_dir.name)
     
+    print("> Downloading Files")
     for file in files: 
         if not file.download(): 
             return 1
@@ -143,16 +144,28 @@ def install(work_dir: TemporaryDirectory) -> int:
 
     
     udev_rule.replace_text("__ROOT_SERVICE__", root_service.name)
-    user_service.replace_text("__SCRIPT_PATH__", launcher.name)
+    root_service.replace_text("__USER__", os.environ["USER"])
+    root_service.replace_text("__SERVICE__", user_service.name)
 
-    print("Installing Files...")
+    print(">Installing Files...")
     subprocess.run(["sudo", "-v"], check=False)
-    subprocess.run(["mkdir", "-p", config_dir, project_dir], check=False)
+    subprocess.run(["sudo", "mkdir", "-p", project_dir,], check=False)
+    subprocess.run(["mkdir", "-p", config_dir], check=False)
     subprocess.run(["sudo", "mkdir", "-p", "/mnt/"], check=False)
 
     for file in files: 
         file.install()
-        
+    
+    print("Files Installed!") 
+    print()
+    print("> Updating Rules And Services")
+    
+    subprocess.run(["sudo", "udevadm", "control", "--reload"], check=False)
+    subprocess.run(["sudo", "systemctl", "daemon-reload"], check=False)
+    subprocess.run(["systemctl", "--user", "daemon-reload"], check=False)
+    
+    print("Rules Updated!")
+    
     return 0
 
 if __name__ == "__main__":
