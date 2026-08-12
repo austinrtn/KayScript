@@ -1,7 +1,4 @@
 #!/usr/bin/env bash
-id -un
-read
-
 # CD into the directory of where the script exist in memory 
 # rather than the current directory of the user 
 script_dir="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
