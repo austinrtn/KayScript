@@ -1,9 +1,10 @@
 import sys 
 import subprocess
 import os
-from tempfile import TemporaryDirectory
+from tempfile import TemporaryDirectory, TemporaryFile
 from dataclasses import dataclass
 from pathlib import Path
+import tempfile
 
 @dataclass()
 class File: 
@@ -12,7 +13,10 @@ class File:
     dest: Path
     mode: int
     root_owned: bool 
-    tmp_path: Path = Path("/tmp")
+    tmp_path: Path = Path("/tmp/")
+
+    def __post_init__(self):
+        self.tmp_path = Path.cwd() / self.name
 
     def download(self) -> bool:
         result = subprocess.run(
@@ -121,15 +125,6 @@ reqs = File(
 
 files = [udev_rule, root_service, user_service, launcher, app, reqs]
 
-def main(): 
-    arg = sys.argv[1]
-    if arg == "--i":
-        work_dir = TemporaryDirectory()
-        try: 
-            install_script(work_dir)
-        finally:
-            work_dir.cleanup()
-
 def install_script(work_dir: TemporaryDirectory) -> int:
     print("> Beginning Installation!")
     os.chdir(work_dir.name)
@@ -177,6 +172,29 @@ def install_script(work_dir: TemporaryDirectory) -> int:
     print("Rules Updated!")
     
     return 0
+
+def main(): 
+    arg="--i"
+    if len(sys.argv) >= 1:
+        arg=sys.argv[1]
+        
+    if arg == "--i":
+        work_dir = TemporaryDirectory()
+        try: 
+            install_script(work_dir)
+        finally:
+            work_dir.cleanup()
+
+    if arg == "--u": 
+        print(">Updating Files...")
+        try: 
+            subprocess.run(["sudo", "-v"], check=True)
+        except subprocess.SubprocessError: 
+            print("Failed sudo auth")
+            return 1
+            
+        for file in files: 
+            file.install()
 
 if __name__ == "__main__":
     main()
