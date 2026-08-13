@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#Hello worl
+
 script_dir="$(dirname "$(readlink -f "${bash_source[0]}")")"
 cd "$script_dir"
 
@@ -82,3 +82,4 @@ fi
 clear
 read -p "opening application:"
 sudo python "$app"
+read -p "App finished!"

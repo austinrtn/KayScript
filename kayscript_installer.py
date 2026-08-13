@@ -100,7 +100,7 @@ user_service = File(
 )
 
 launcher = File(
-    name="kayscript.sh",
+    name="KayScript.sh",
     url=f"{gh_url}KayScript.sh",
     dest=project_dir / "KayScript.sh",
     mode=0o755,
@@ -195,6 +195,8 @@ def main():
             
         for file in files: 
             file.install()
+            
+        print("Files Updated!")
 
 if __name__ == "__main__":
     main()
