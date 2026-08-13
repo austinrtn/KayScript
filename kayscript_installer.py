@@ -157,15 +157,18 @@ def install_script(work_dir: TemporaryDirectory, download_files: bool) -> int:
     print("Files Installed!") 
     print()
 
-    print("> Installing Python Virtual Enviornment...")
-    
-    try:
-        subprocess.run(["sudo", "python", "-m", "venv", str(project_dir / ".venv")], check=True)
-    except subprocess.CalledProcessError as error:
-        print(f"Unable to install python virtual enviornment: {error.returncode}", file=sys.stdout)
-        return 1
+    venv_dir = project_dir / ".venv"
+    if not venv_dir.is_dir():
+        print("> Installing Python Virtual Enviornment...")
         
-    print("Python Venv Installed!")
+        try:
+            subprocess.run(["sudo", "python", "-m", "venv", str(project_dir / ".venv")], check=True)
+        except subprocess.CalledProcessError as error:
+            print(f"Unable to install python virtual enviornment: {error.returncode}", file=sys.stdout)
+            return 1
+            
+        print("Python Venv Installed!")
+        
     print("> Updating Rules And Services")
     
     subprocess.run(["sudo", "udevadm", "control", "--reload"], check=False)
