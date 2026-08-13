@@ -1,10 +1,9 @@
 import sys 
 import subprocess
 import os
-from tempfile import TemporaryDirectory, TemporaryFile
+from tempfile import TemporaryDirectory
 from dataclasses import dataclass
 from pathlib import Path
-import tempfile
 
 @dataclass()
 class File: 
@@ -15,7 +14,7 @@ class File:
     root_owned: bool 
     tmp_path: Path = Path("/tmp/")
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         self.tmp_path = Path.cwd() / self.name
 
     def download(self) -> bool:
@@ -71,8 +70,11 @@ class File:
                 f"{self.tmp_path}", f"{self.dest}",
             ], check=False)
 
+    def uninstall(self) -> None: 
+        subprocess.run(["sudo", "rm", "-f", str(self.dest)], check=False)
+
 config_dir = Path.home() / ".config/systemd/user/"
-project_dir = Path.home() / "/var/lib/kayscript"
+project_dir = Path("/var/lib/kayscript")
 gh_url="https://raw.githubusercontent.com/austinrtn/KayScript/refs/heads/master/"
 
 udev_rule = File(
@@ -125,17 +127,18 @@ reqs = File(
 
 files = [udev_rule, root_service, user_service, launcher, app, reqs]
 
-def install_script(work_dir: TemporaryDirectory) -> int:
+def install_script(work_dir: TemporaryDirectory, download_files: bool) -> int:
     print("> Beginning Installation!")
     os.chdir(work_dir.name)
-    
-    print("> Downloading Files")
-    for file in files: 
-        if not file.download(): 
-            return 1
-        file.tmp_path = Path(work_dir.name) / file.name
-    
-    print("Files Downloaded!")
+
+    if download_files:
+        print("> Downloading Files")
+        for file in files: 
+            if not file.download(): 
+                return 1
+            file.tmp_path = Path(work_dir.name) / file.name
+        
+        print("Files Downloaded!")
 
     
     udev_rule.replace_text("__ROOT_SERVICE__", root_service.name)
@@ -173,30 +176,33 @@ def install_script(work_dir: TemporaryDirectory) -> int:
     
     return 0
 
+def uninstall():
+    confirm = input("Are you sure you want to uninstall KayScript? [Y/n]\t")
+    confirm = confirm.lower()
+    
+    if confirm == "y":
+        print(">Uninstalling...")
+        for file in files: 
+            file.uninstall()
+            
+        subprocess.run(["sudo", "rm", "-rf", str(project_dir)], check=False)
+        print("Uninstalled!")
+
 def main(): 
     arg="--i"
     if len(sys.argv) >= 1:
         arg=sys.argv[1]
         
-    if arg == "--i":
+    if arg == "--d" or arg == "--l":
         work_dir = TemporaryDirectory()
+        download_files = arg == "--d"
         try: 
-            install_script(work_dir)
+            install_script(work_dir, download_files)
         finally:
             work_dir.cleanup()
 
-    if arg == "--u": 
-        print(">Updating Files...")
-        try: 
-            subprocess.run(["sudo", "-v"], check=True)
-        except subprocess.SubprocessError: 
-            print("Failed sudo auth")
-            return 1
-            
-        for file in files: 
-            file.install()
-            
-        print("Files Updated!")
+    if arg == "--r": 
+        uninstall()
 
 if __name__ == "__main__":
     main()

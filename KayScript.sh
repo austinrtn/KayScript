@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-script_dir="$(dirname "$(readlink -f "${bash_source[0]}")")"
+script_dir="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
 cd "$script_dir"
 
 # file names
@@ -80,6 +80,4 @@ fi
 
 #open program  
 clear
-read -p "opening application:"
-sudo python "$app"
-read -p "App finished!"
+python "$app"
