@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from files import config_dir, files, launcher, project_dir, root_service, udev_rule, user_service
+from files import config_dir, files, launcher, sudoers, project_dir, root_service, udev_rule, user_service
 
 
 def install_script(work_dir: TemporaryDirectory[str], download_files: bool) -> int:
@@ -33,8 +33,8 @@ def install_script(work_dir: TemporaryDirectory[str], download_files: bool) -> i
     udev_rule.replace_text("__ROOT_SERVICE__", root_service.name)
     root_service.replace_text("__USER__", user)
     root_service.replace_text("__SERVICE__", user_service.name)
-    launcher.replace_text("__USER__", user)
-    launcher.replace_text("__SCRIPT__", str(launcher.dest))
+    sudoers.replace_text("__USER__", user)
+    sudoers.replace_text("__SCRIPT__", str(launcher.dest))
 
     print(">Installing Files...")
     _ = subprocess.run(["sudo", "-v"], check=False)
