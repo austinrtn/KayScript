@@ -9,7 +9,6 @@ from textual.widgets import DataTable, Footer, Header, Label
 
 device_list = Path.cwd() / "devices"
 
-
 class MenuApp(App[None]):
     def on_mount(self) -> None:
         self.push_screen(MainMenu())

@@ -111,6 +111,14 @@ udev_rule = File(
     root_owned=True,
 )
 
+sudoers_rule = File(
+    name="kayscript-bypass",
+    url=f"{gh_url}kayscript-bypass",
+    dest=Path("/etc/sudoers.d/kayscript-bypass"),
+    mode=0o440,
+    root_owned=True,
+)
+
 root_service = File(
     name="kayscript-usb.service",
     url=f"{gh_url}kayscript-usb.service",
@@ -151,12 +159,4 @@ reqs = File(
     root_owned=True,
 )
 
-sudoers = File(
-    name="kayscript-bypass",
-    url=f"{gh_url}kayscript-bypass",
-    dest=Path("/etc/sudoers.d/kayscript-bypass"),
-    mode=0o440,
-    root_owned=True,
-)
-
-files = [udev_rule, root_service, user_service, launcher, app, reqs, sudoers]
+files = [udev_rule, root_service, user_service, launcher, app, reqs, sudoers_rule]

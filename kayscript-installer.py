@@ -5,10 +5,10 @@ import sys
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from files import config_dir, files, launcher, sudoers, project_dir, root_service, udev_rule, user_service
+from files import config_dir, files, launcher, sudoers_rule, project_dir, root_service, udev_rule, user_service
 
 
-def install_script(work_dir: TemporaryDirectory[str], download_files: bool) -> int:
+def install_script(work_dir: TemporaryDirectory[str], download_files: bool) -> None:
     print("> Beginning Installation!")
     os.chdir(work_dir.name)
 
@@ -16,7 +16,7 @@ def install_script(work_dir: TemporaryDirectory[str], download_files: bool) -> i
         print("> Downloading Files")
         for file in files:
             if not file.download():
-                return 1
+                return 
             file.tmp_path = Path(work_dir.name) / file.name
 
         print("Files Downloaded!")
@@ -27,14 +27,13 @@ def install_script(work_dir: TemporaryDirectory[str], download_files: bool) -> i
             if not file.validate_path():
                 print(f"Missing file: {file.name}")
                 print("Exiting")
-                return 1
-
+                
     user = get_username()
     udev_rule.replace_text("__ROOT_SERVICE__", root_service.name)
     root_service.replace_text("__USER__", user)
     root_service.replace_text("__SERVICE__", user_service.name)
-    sudoers.replace_text("__USER__", user)
-    sudoers.replace_text("__SCRIPT__", str(launcher.dest))
+    sudoers_rule.replace_text("__USER__", user)
+    sudoers_rule.replace_text("__SCRIPT__", str(launcher.dest))
 
     print(">Installing Files...")
     _ = subprocess.run(["sudo", "-v"], check=False)
@@ -69,7 +68,6 @@ def install_script(work_dir: TemporaryDirectory[str], download_files: bool) -> i
                 f"Unable to install python virtual enviornment: {error.returncode}",
                 file=sys.stdout,
             )
-            return 1
 
         print("Python Venv Installed!")
 
@@ -80,9 +78,6 @@ def install_script(work_dir: TemporaryDirectory[str], download_files: bool) -> i
     _ = subprocess.run(["systemctl", "--user", "daemon-reload"], check=False)
 
     print("Rules Updated!")
-
-    return 0
-
 
 def uninstall() -> None:
     confirm = input("Are you sure you want to uninstall KayScript? [Y/n]\t")
@@ -105,7 +100,7 @@ def get_username() -> str:
     return pwd.getpwuid(uid).pw_name
 
 def main() -> None:
-    arg = "--i"
+    arg = "--d"
     if len(sys.argv) >= 1:
         arg = sys.argv[1]
 
@@ -113,11 +108,11 @@ def main() -> None:
         work_dir = TemporaryDirectory()
         download_files = arg == "--d"
         try:
-            _ = install_script(work_dir, download_files)
+            install_script(work_dir, download_files)
         finally:
             work_dir.cleanup()
 
-    if arg == "--r":
+    elif arg == "--r":
         uninstall()
 
 
