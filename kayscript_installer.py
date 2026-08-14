@@ -17,6 +17,9 @@ class File:
     def __post_init__(self) -> None:
         self.tmp_path = Path.cwd() / self.name
 
+    def validate_path(self) -> bool: 
+        return self.tmp_path.exists()
+
     def download(self) -> bool:
         result = subprocess.run(
             [
@@ -125,7 +128,15 @@ reqs = File(
     root_owned=True,
 )
 
-files = [udev_rule, root_service, user_service, launcher, app, reqs]
+sudoers = File(
+    name="kayscript-bypass",
+    url=f"{gh_url}kayscript-bypass",
+    dest=Path("/etc/sudoers.d/kayscript-bypass"),
+    mode=0o440,
+    root_owned=True,
+)
+
+files = [udev_rule, root_service, user_service, launcher, app, reqs, sudoers]
 
 def install_script(work_dir: TemporaryDirectory, download_files: bool) -> int:
     print("> Beginning Installation!")
@@ -140,7 +151,13 @@ def install_script(work_dir: TemporaryDirectory, download_files: bool) -> int:
         
         print("Files Downloaded!")
 
-    
+    else:
+        for file in files: 
+            if not file.validate_path():
+                print(f"Missing file: {file.name}")
+                print("Exiting")
+                return 1
+
     udev_rule.replace_text("__ROOT_SERVICE__", root_service.name)
     root_service.replace_text("__USER__", os.environ["USER"])
     root_service.replace_text("__SERVICE__", user_service.name)
