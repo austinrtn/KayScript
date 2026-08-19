@@ -78,6 +78,8 @@ def install_script(work_dir: TemporaryDirectory[str], download_files: bool) -> N
     _ = subprocess.run(["systemctl", "--user", "daemon-reload"], check=False)
 
     print("Rules Updated!")
+    print()
+    print("Installation Finished!")
 
 def uninstall() -> None:
     confirm = input("Are you sure you want to uninstall KayScript? [Y/n]\t")
