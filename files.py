@@ -7,20 +7,29 @@ from pathlib import Path
 #################################
 ###### FILE CLASS ###############
 #################################
+
 @dataclass()
 class File:
     name: str
+    type: str
     url: str
     dest: Path
     mode: int
     root_owned: bool
-    tmp_path: Path = Path("/tmp/")
+    tmp_path: Path = Path(".")
 
     def __post_init__(self) -> None:
-        self.tmp_path = Path.cwd() / self.name
+        self.tmp_path = (self.tmp_path / self.name).resolve()
+        self.dest = self.dest.resolve()
 
-    def validate_path(self) -> bool:
+    def validate_tmp_path(self) -> bool:
         return self.tmp_path.exists()
+
+    def validate_dest_path(self) -> bool: 
+        cmd = ["test", "-e", str(self.dest)]
+        
+        if self.root_owned: cmd.insert(0, "sudo")
+        return subprocess.run(cmd, check=False).returncode == 0
 
     def download(self) -> bool:
         result = subprocess.run(
@@ -102,9 +111,11 @@ class File:
 config_dir = Path.home() / ".config/systemd/user/"
 project_dir = Path("/var/lib/kayscript")
 gh_url = "https://raw.githubusercontent.com/austinrtn/KayScript/refs/heads/master/"
+kayscript_url= "https://github.com/austinrtn/KayScript/blob/c21bc06e163389a6f6afb82f8ceed6b9b7604df3/dist/kayscript-app"
 
 udev_rule = File(
     name="99-usb-connected.rules",
+    type="udev_rule",
     url=f"{gh_url}99-usb-connected.rules",
     dest=Path("/etc/udev/rules.d/99-usb-connected.rules"),
     mode=0o644,
@@ -113,6 +124,7 @@ udev_rule = File(
 
 sudoers_rule = File(
     name="kayscript-bypass",
+    type="sudoers_rule",
     url=f"{gh_url}kayscript-bypass",
     dest=Path("/etc/sudoers.d/kayscript-bypass"),
     mode=0o440,
@@ -121,6 +133,7 @@ sudoers_rule = File(
 
 root_service = File(
     name="kayscript-usb.service",
+    type="root_service",
     url=f"{gh_url}kayscript-usb.service",
     dest=Path("/etc/systemd/system/kayscript-usb.service"),
     mode=0o644,
@@ -129,34 +142,20 @@ root_service = File(
 
 user_service = File(
     name="kayscript.service",
+    type="user_service",
     url=f"{gh_url}kayscript.service",
     dest=Path.home() / ".config/systemd/user/kayscript.service",
     mode=0o644,
     root_owned=False,
 )
 
-launcher = File(
-    name="KayScript.sh",
-    url=f"{gh_url}KayScript.sh",
-    dest=project_dir / "KayScript.sh",
+kayscript = File(
+    name="kayscript-app",
+    type="Main Script",
+    url=f"{gh_url}dist/kayscript-app",
+    dest=project_dir / "KayScript",
     mode=0o755,
     root_owned=True,
+    tmp_path=Path("./dist/")
 )
-
-app = File(
-    name="app.py",
-    url=f"{gh_url}app.py",
-    dest=project_dir / "app.py",
-    mode=0o644,
-    root_owned=True,
-)
-
-reqs = File(
-    name="requirements.json",
-    url=f"{gh_url}requirements.json",
-    dest=project_dir / "requirements.json",
-    mode=0o644,
-    root_owned=True,
-)
-
-files = [udev_rule, root_service, user_service, launcher, app, reqs, sudoers_rule]
+files = [udev_rule, root_service, kayscript, user_service, sudoers_rule]

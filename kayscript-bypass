@@ -1,1 +1,1 @@
-dogmaticpolack ALL=(root) NOPASSWD: /var/lib/kayscript/KayScript.sh ""
+dogmaticpolack ALL=(root) NOPASSWD: __SCRIPT__ ""

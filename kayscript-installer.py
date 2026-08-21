@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from files import config_dir, files, launcher, sudoers_rule, project_dir, root_service, udev_rule, user_service
+from files import File, config_dir, files, sudoers_rule, project_dir, root_service, udev_rule, user_service, kayscript
 
 
 def install_script(work_dir: TemporaryDirectory[str], download_files: bool) -> None:
@@ -24,7 +24,7 @@ def install_script(work_dir: TemporaryDirectory[str], download_files: bool) -> N
 
     else:
         for file in files:
-            if not file.validate_path():
+            if not file.validate_tmp_path():
                 print(f"Missing file: {file.name}")
                 print("Exiting")
                 
@@ -33,7 +33,7 @@ def install_script(work_dir: TemporaryDirectory[str], download_files: bool) -> N
     root_service.replace_text("__USER__", user)
     root_service.replace_text("__SERVICE__", user_service.name)
     sudoers_rule.replace_text("__USER__", user)
-    sudoers_rule.replace_text("__SCRIPT__", str(launcher.dest))
+    sudoers_rule.replace_text("__SCRIPT__", str(kayscript.dest))
 
     print(">Installing Files...")
     _ = subprocess.run(["sudo", "-v"], check=False)
@@ -46,6 +46,7 @@ def install_script(work_dir: TemporaryDirectory[str], download_files: bool) -> N
         ],
         check=False,
     )
+    
     _ = subprocess.run(["mkdir", "-p", config_dir], check=False)
     _ = subprocess.run(["sudo", "mkdir", "-p", "/mnt/"], check=False)
 
@@ -101,6 +102,45 @@ def get_username() -> str:
         
     return pwd.getpwuid(uid).pw_name
 
+def check(): 
+    _ = subprocess.run(["sudo", "-v"], check=False)
+
+    
+    print("\033[2J\033[H", end="", flush=True)
+    for file in files:
+        header: str = f"### {file.type} ###"
+        print(f"{header}")
+        print("_" * len(header))
+        print()
+        print(f"Local Path: {file.tmp_path}")
+        print(f"Dest Path: {file.dest}")
+
+        exists = file.validate_dest_path()
+        match = False if not exists else files_match(file)
+        
+         
+        print(f"Exists: {exists}")
+        print(f"Files Match: {match if exists else 'N.A'}")
+        print()
+
+        _ = input("Press any key to continue")
+        print("\033[2J\033[H", end="", flush=True)
+
+def files_match(file: File) -> bool:
+    cmp = ["cmp", "--silent", "--", str(file.tmp_path), str(file.dest)]
+
+    if file.root_owned:
+        cmp.insert(0, "sudo")
+
+    result = subprocess.run(cmp, check=False)
+
+    if result.returncode == 0:
+        return True
+    elif result.returncode == 1: 
+        return False
+
+    raise RuntimeError(f"Could not compare {file.tmp_path} and {file.dest}")
+    
 def main() -> None:
     arg = "--d"
     if len(sys.argv) >= 1:
@@ -116,6 +156,9 @@ def main() -> None:
 
     elif arg == "--r":
         uninstall()
+
+    elif arg == "--c":
+        check()
 
 
 if __name__ == "__main__":
