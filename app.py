@@ -91,10 +91,16 @@ class FileUploader(Screen):
     def on_key(self, event: events.Key) -> None: 
         print("hello")
 
-if __name__ == "__main__":
+def main():
     if not device_list.exists():
         device_list.touch()
         
     app = MenuApp()
     app.run()
     input()
+
+if __name__ == "__main__":
+    try: 
+        main()
+    except KeyboardInterrupt:
+        pass
