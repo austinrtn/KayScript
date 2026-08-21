@@ -24,6 +24,7 @@ class BlockSelector(Screen):
         ("escape", "app.quit", "Exit"),
     ]
 
+#comment
     def __init__(self) -> None:
         super().__init__()
         self.devices: list[dict[str, str]] = []

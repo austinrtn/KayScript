@@ -110,6 +110,7 @@ class File:
 #################################
 config_dir = Path.home() / ".config/systemd/user/"
 project_dir = Path("/var/lib/kayscript")
+
 gh_url = "https://raw.githubusercontent.com/austinrtn/KayScript/refs/heads/master/"
 kayscript_url= "https://github.com/austinrtn/KayScript/blob/c21bc06e163389a6f6afb82f8ceed6b9b7604df3/dist/kayscript-app"
 

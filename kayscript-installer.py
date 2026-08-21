@@ -1,7 +1,7 @@
 import os
 import pwd
-from shutil import copyfile
-import subprocess
+from shutil import copyfile, which
+from subprocess import CalledProcessError as ProcessError, run
 import sys
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -10,7 +10,10 @@ from files import File, config_dir, files, sudoers_rule, project_dir, root_servi
 
 
 def install_script(work_dir: TemporaryDirectory[str], download_files: bool) -> None:
+    _ = run(["sudo", "-v"], check=False)
+    
     print("> Beginning Installation!")
+    app_py_path = Path(Path.cwd() / "app.py")
     os.chdir(work_dir.name)
 
     work_path = Path(work_dir.name).resolve()
@@ -25,6 +28,7 @@ def install_script(work_dir: TemporaryDirectory[str], download_files: bool) -> N
         print()
 
     else:
+        compile(app_py_path) 
         for file in files:
             if not file.validate_tmp_path():
                 print(f"Missing file: {file.name}")
@@ -47,8 +51,7 @@ def install_script(work_dir: TemporaryDirectory[str], download_files: bool) -> N
     user_service.replace_text("__SCRIPT__", str(kayscript.dest))
 
     print(">Installing Files...")
-    _ = subprocess.run(["sudo", "-v"], check=False)
-    _ = subprocess.run(
+    _ = run(
         [
             "sudo",
             "mkdir",
@@ -58,8 +61,8 @@ def install_script(work_dir: TemporaryDirectory[str], download_files: bool) -> N
         check=False,
     )
     
-    _ = subprocess.run(["mkdir", "-p", config_dir], check=False)
-    _ = subprocess.run(["sudo", "mkdir", "-p", "/mnt/"], check=False)
+    _ = run(["mkdir", "-p", config_dir], check=False)
+    _ = run(["sudo", "mkdir", "-p", "/mnt/"], check=False)
 
     for file in files:
         file.install()
@@ -72,10 +75,10 @@ def install_script(work_dir: TemporaryDirectory[str], download_files: bool) -> N
         print("> Installing Python Virtual Enviornment...")
 
         try:
-            _ = subprocess.run(
+            _ = run(
                 ["sudo", "python", "-m", "venv", str(project_dir / ".venv")], check=True
             )
-        except subprocess.CalledProcessError as error:
+        except ProcessError as error:
             print(
                 f"Unable to install python virtual enviornment: {error.returncode}",
                 file=sys.stdout,
@@ -85,14 +88,95 @@ def install_script(work_dir: TemporaryDirectory[str], download_files: bool) -> N
 
     print("> Updating Rules And Services")
 
-    _ = subprocess.run(["sudo", "udevadm", "control", "--reload"], check=False)
-    _ = subprocess.run(["sudo", "systemctl", "daemon-reload"], check=False)
-    _ = subprocess.run(["systemctl", "--user", "daemon-reload"], check=False)
+    _ = run(["sudo", "udevadm", "control", "--reload"], check=False)
+    _ = run(["sudo", "systemctl", "daemon-reload"], check=False)
+    _ = run(["systemctl", "--user", "daemon-reload"], check=False)
 
     print("Rules Updated!")
     print()
     print("Installation Finished!")
 
+def compile(app_py_path: Path) -> None: 
+    if input("Would you like to compile the application? [y/n]\n").lower() != "y":
+       return 
+       
+    try: 
+        ensure_pipx()
+    except ProcessError as err:
+        print(f"Could not install pipx: {err.returncode}")
+        return
+
+    try:
+        ensure_pyinstaller()
+    except ProcessError as err:
+        print(f"Could not install Pyinstaller: {err.returncode}")
+        return
+
+    print("> Compiling Python Applicaiton...")
+    try: 
+        _ = run(
+            [
+                "pyinstaller",
+                "--onefile",
+                "--name",
+                "kayscript-app",
+                f"{app_py_path}",
+            ],
+            check=True,
+            capture_output=True,
+        )
+
+    except ProcessError as err:
+        print(f"Could not compile executable: {err.returncode}")
+        return
+
+    print("Application Compiled!")
+    print()
+        
+def ensure_pipx() -> None:
+    if which("pipx") is None: 
+        print("> Installing Pipx...")
+    else: 
+        return
+    
+    _ = run(
+        [
+            "sudo",
+            "pacman",
+            "-S",
+            "--needed",
+            "python-pipx",
+        ],
+        check=True,
+    )
+
+    if which("pipx") is None:
+              raise RuntimeError("pipx was installed but is not available in PATH")
+    else: 
+        print("Pipx Installed!")
+        print()
+    
+def ensure_pyinstaller() -> None: 
+    if which("pyinstaller") is None: 
+        print("> Installing Pyinstaller...")
+    else: 
+        return
+        
+    _ = run(
+        [
+            "pipx",
+            "install",
+            "pyinstaller",
+        ],
+        check=True,
+    )
+
+    if which("pyinstaller") is None:
+                raise RuntimeError("pyinstaller was installed but is not available in PATH")
+    else: 
+        print("Pyinstaller Installed!")
+        print()
+        
 def uninstall() -> None:
     confirm = input("Are you sure you want to uninstall KayScript? [Y/n]\t")
     confirm = confirm.lower()
@@ -102,7 +186,7 @@ def uninstall() -> None:
         for file in files:
             file.uninstall()
 
-        _ = subprocess.run(["sudo", "rm", "-rf", str(project_dir)], check=False)
+        _ = run(["sudo", "rm", "-rf", str(project_dir)], check=False)
         print("Uninstalled!")
 
 def get_username() -> str:
@@ -114,9 +198,8 @@ def get_username() -> str:
     return pwd.getpwuid(uid).pw_name
 
 def check(): 
-    _ = subprocess.run(["sudo", "-v"], check=False)
+    _ = run(["sudo", "-v"], check=False)
 
-    
     print("\033[2J\033[H", end="", flush=True)
     for file in files:
         header: str = f"### {file.type} ###"
@@ -143,7 +226,7 @@ def files_match(file: File) -> bool:
     if file.root_owned:
         cmp.insert(0, "sudo")
 
-    result = subprocess.run(cmp, check=False)
+    result = run(cmp, check=False)
 
     if result.returncode == 0:
         return True
@@ -165,6 +248,7 @@ def main() -> None:
         finally:
             work_dir.cleanup()
 
+            
     elif arg == "--r":
         uninstall()
 
@@ -173,4 +257,7 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    try: 
+        main()
+    except KeyboardInterrupt: 
+        pass
