@@ -1,1 +1,1 @@
-dogmaticpolack ALL=(root) NOPASSWD: __SCRIPT__ ""
+__USER__ ALL=(root) NOPASSWD: __SCRIPT__ ""

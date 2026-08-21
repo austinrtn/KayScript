@@ -1,5 +1,6 @@
 import os
 import pwd
+from shutil import copyfile
 import subprocess
 import sys
 from pathlib import Path
@@ -12,12 +13,13 @@ def install_script(work_dir: TemporaryDirectory[str], download_files: bool) -> N
     print("> Beginning Installation!")
     os.chdir(work_dir.name)
 
+    work_path = Path(work_dir.name).resolve()
     if download_files:
         print("> Downloading Files")
         for file in files:
             if not file.download():
                 return 
-            file.tmp_path = Path(work_dir.name) / file.name
+            file.tmp_path = work_path / file.name
 
         print("Files Downloaded!")
         print()
@@ -27,6 +29,14 @@ def install_script(work_dir: TemporaryDirectory[str], download_files: bool) -> N
             if not file.validate_tmp_path():
                 print(f"Missing file: {file.name}")
                 print("Exiting")
+
+            source = file.tmp_path
+            staged = Path(work_path / file.name)
+
+            _ = copyfile(source, staged)
+            staged.chmod(0o600)
+            
+            file.tmp_path = staged
                 
     user = get_username()
     udev_rule.replace_text("__ROOT_SERVICE__", root_service.name)
@@ -34,6 +44,7 @@ def install_script(work_dir: TemporaryDirectory[str], download_files: bool) -> N
     root_service.replace_text("__SERVICE__", user_service.name)
     sudoers_rule.replace_text("__USER__", user)
     sudoers_rule.replace_text("__SCRIPT__", str(kayscript.dest))
+    user_service.replace_text("__SCRIPT__", str(kayscript.dest))
 
     print(">Installing Files...")
     _ = subprocess.run(["sudo", "-v"], check=False)
